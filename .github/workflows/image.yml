@@ -43,19 +43,6 @@ jobs:
             type=semver,pattern={{version}}
             type=sha
 
-      - name: Set image tags
-        id: set-tags
-        run: |
-          TAGS=""
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAGS="${GITHUB_REF_NAME}"
-          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            TAGS="pr-${{ github.event.pull_request.number }}"
-          else
-            TAGS="latest,${GITHUB_SHA::8}"
-          fi
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -63,7 +50,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ steps.set-tags.outputs.tags }}
+            ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -84,22 +71,26 @@ jobs:
 
       - name: Generate SBOM with Syft
         run: |
-          syft ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ steps.set-tags.outputs.tags }} -o json > sbom.json
-          syft ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ steps.set-tags.outputs.tags }} -o cyclonedx > sbom.cdx.json
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d',' -f1)
+          syft ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${FIRST_TAG} -o json > sbom.json
+          syft ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${FIRST_TAG} -o cyclonedx > sbom.cdx.json
 
       - name: Scan image with Grype (JSON)
         run: |
-          grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ steps.set-tags.outputs.tags }} -o json > grype-report.json
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d',' -f1)
+          grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${FIRST_TAG} -o json > grype-report.json
 
       - name: Scan image with Grype (HTML)
         run: |
           mkdir -p ~/.grype/templates
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/templates/html.tmpl -o ~/.grype/templates/html.tmpl
-          grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ steps.set-tags.outputs.tags }} -o template -t ~/.grype/templates/html.tmpl > grype-report.html
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d',' -f1)
+          grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${FIRST_TAG} -o template -t ~/.grype/templates/html.tmpl > grype-report.html
 
       - name: Scan image with Grype (CSV)
         run: |
-          grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ steps.set-tags.outputs.tags }} -o csv > grype-report.csv
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | cut -d',' -f1)
+          grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${FIRST_TAG} -o csv > grype-report.csv
 
       - name: Upload SBOM and vulnerability reports as artifacts
         uses: actions/upload-artifact@v4
