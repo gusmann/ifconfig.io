@@ -83,10 +83,6 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/templates/html.tmpl -o ~/.grype/templates/html.tmpl
           grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ env.DOCKER_METADATA_OUTPUT_VERSION }} -o template -t ~/.grype/templates/html.tmpl > grype-report.html
 
-      - name: Scan image with Grype (CSV)
-        run: |
-          grype ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:${{ env.DOCKER_METADATA_OUTPUT_VERSION }} -o csv > grype-report.csv
-
       - name: Upload SBOM and vulnerability reports as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -96,4 +92,3 @@ jobs:
             sbom.cdx.json
             grype-report.json
             grype-report.html
-            grype-report.csv
