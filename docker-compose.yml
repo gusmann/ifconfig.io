@@ -2,7 +2,7 @@ version: "3.4"
 
 services:
   ifconfig:
-    image: ifconfig.io:latest
+    image: ghcr.io/gusmann/ifconfig.io:pr-1
     build:
       context: ./
       target: production
